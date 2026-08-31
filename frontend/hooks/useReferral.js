@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 
-export const useReferral = () => {
+export const useReferral = (userId = null) => {
   const [referralStats, setReferralStats] = useState({
     totalInvites: 0,
     activeUsers: 0,
@@ -13,6 +13,36 @@ export const useReferral = () => {
   const [invitedUsers, setInvitedUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    if (userId) {
+      const fetchReferralData = async (userId) => {
+        if (!userId) return;
+        setLoading(true);
+        setError(null);
+        try {
+          const response = await axios.get(`/api/referrals/${userId}`, {
+            withCredentials: true,
+            signal: controller.signal
+          });
+          setReferralStats(response.data.stats);
+          setInvitedUsers(response.data.invitedUsers);
+        } catch (err) {
+          if (!axios.isCancel(err)) {
+            console.error("Failed to fetch referral data:", err);
+            setError("Failed to load referral data");
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchReferralData(userId);
+    }
+    return () => {
+      controller.abort();
+    };
+  }, [userId]);
 
   // Generate referral link for current user
   const generateReferralLink = (userId) => {
@@ -87,8 +117,8 @@ export const useReferral = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Join StellarHunt!",
-          text: "I'm playing this amazing StellarHunt game. Join me and earn exclusive rewards!",
+          title: "Join StellarHunts!",
+          text: "I'm playing this amazing StellarHunts game. Join me and earn exclusive rewards!",
           url: referralLink
         });
         return true;
